@@ -61,7 +61,9 @@ public static class AuthenticationSetup
             .SetFallbackPolicy(new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder()
                 .RequireAuthenticatedUser().Build())
             .AddPolicy(AuthPolicies.ManageUsers, p => p.RequireRole(nameof(UserRole.Owner), nameof(UserRole.Admin)))
-            .AddPolicy(AuthPolicies.ManageWorkshop, p => p.RequireRole(nameof(UserRole.Owner)));
+            .AddPolicy(AuthPolicies.ManageWorkshop, p => p.RequireRole(nameof(UserRole.Owner)))
+            .AddPolicy(AuthPolicies.FrontOffice,
+                p => p.RequireRole(nameof(UserRole.Owner), nameof(UserRole.Admin), nameof(UserRole.Receptionist)));
 
         services.AddRateLimiter(options =>
         {

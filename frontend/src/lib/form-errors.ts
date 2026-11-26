@@ -1,17 +1,17 @@
 import type { FieldValues, Path, UseFormSetError } from 'react-hook-form'
 import { ApiError } from '@/lib/api-client'
-import { ru } from '@/locales/ru'
+import { t } from '@/locales'
 
 /** A user-facing Russian message for any error thrown by the API client. */
 export function errorMessage(error: unknown): string {
   if (error instanceof ApiError) {
-    if (error.code && error.code in ru.errors) return ru.errors[error.code as keyof typeof ru.errors]
-    if (error.status === 403) return ru.errors.forbidden
-    if (error.status === 404) return ru.errors.not_found
-    return ru.errors.unknown
+    if (error.code && error.code in t.errors) return t.errors[error.code as keyof typeof t.errors]
+    if (error.status === 403) return t.errors.forbidden
+    if (error.status === 404) return t.errors.not_found
+    return t.errors.unknown
   }
-  if (error instanceof TypeError) return ru.errors.network // fetch network failure
-  return ru.errors.unknown
+  if (error instanceof TypeError) return t.errors.network // fetch network failure
+  return t.errors.unknown
 }
 
 /**

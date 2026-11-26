@@ -15,17 +15,17 @@ import { Input } from '@/components/ui/input'
 import { FormAlert, FormField } from '@/components/form-field'
 import { applyFieldErrors, errorMessage } from '@/lib/form-errors'
 import { passwordSchema } from '@/lib/validation'
-import { ru } from '@/locales/ru'
+import { t } from '@/locales'
 import { changePassword } from './auth-api'
 
 const schema = z
   .object({
-    currentPassword: z.string().min(1, { error: ru.validation.required }),
+    currentPassword: z.string().min(1, { error: t.validation.required }),
     newPassword: passwordSchema,
     confirmPassword: z.string(),
   })
-  .refine((v) => v.newPassword === v.confirmPassword, { path: ['confirmPassword'], error: ru.changePassword.mismatch })
-  .refine((v) => v.newPassword !== v.currentPassword, { path: ['newPassword'], error: ru.changePassword.sameAsCurrent })
+  .refine((v) => v.newPassword === v.confirmPassword, { path: ['confirmPassword'], error: t.changePassword.mismatch })
+  .refine((v) => v.newPassword !== v.currentPassword, { path: ['newPassword'], error: t.changePassword.sameAsCurrent })
 
 type Values = z.infer<typeof schema>
 
@@ -54,8 +54,8 @@ export function ChangePasswordDialog({ open, onOpenChange }: { open: boolean; on
       setDone(true)
     } catch (error) {
       const handled = applyFieldErrors(error, form.setError, ['currentPassword', 'newPassword'], {
-        currentPassword: ru.changePassword.wrongCurrent,
-        newPassword: ru.validation.passwordLength,
+        currentPassword: t.changePassword.wrongCurrent,
+        newPassword: t.validation.passwordLength,
       })
       if (!handled) setFormError(errorMessage(error))
     }
@@ -65,41 +65,41 @@ export function ChangePasswordDialog({ open, onOpenChange }: { open: boolean; on
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{ru.changePassword.title}</DialogTitle>
-          <DialogDescription>{ru.changePassword.description}</DialogDescription>
+          <DialogTitle>{t.changePassword.title}</DialogTitle>
+          <DialogDescription>{t.changePassword.description}</DialogDescription>
         </DialogHeader>
 
         {done ? (
           <>
             <p role="status" className="rounded-md bg-accent px-3 py-2 text-sm text-accent-foreground">
-              {ru.changePassword.done}
+              {t.changePassword.done}
             </p>
             <DialogFooter>
-              <Button onClick={() => handleOpenChange(false)}>{ru.common.close}</Button>
+              <Button onClick={() => handleOpenChange(false)}>{t.common.close}</Button>
             </DialogFooter>
           </>
         ) : (
           <form onSubmit={onSubmit} noValidate className="space-y-4">
             {formError && <FormAlert>{formError}</FormAlert>}
-            <FormField label={ru.changePassword.current} error={errors.currentPassword?.message}>
+            <FormField label={t.changePassword.current} error={errors.currentPassword?.message}>
               {(field) => (
                 <Input {...field} type="password" autoComplete="current-password" {...form.register('currentPassword')} />
               )}
             </FormField>
-            <FormField label={ru.changePassword.next} error={errors.newPassword?.message} hint={ru.changePassword.hint}>
+            <FormField label={t.changePassword.next} error={errors.newPassword?.message} hint={t.changePassword.hint}>
               {(field) => <Input {...field} type="password" autoComplete="new-password" {...form.register('newPassword')} />}
             </FormField>
-            <FormField label={ru.changePassword.confirm} error={errors.confirmPassword?.message}>
+            <FormField label={t.changePassword.confirm} error={errors.confirmPassword?.message}>
               {(field) => (
                 <Input {...field} type="password" autoComplete="new-password" {...form.register('confirmPassword')} />
               )}
             </FormField>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
-                {ru.users.form.cancel}
+                {t.users.form.cancel}
               </Button>
               <Button type="submit" disabled={isSubmitting}>
-                {ru.changePassword.submit}
+                {t.changePassword.submit}
               </Button>
             </DialogFooter>
           </form>

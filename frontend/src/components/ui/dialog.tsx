@@ -1,3 +1,4 @@
+import { t } from "@/locales"
 import * as React from "react"
 import { cn } from "cn"
 import { Dialog as DialogPrimitive } from "radix-ui"
@@ -74,7 +75,7 @@ function DialogContent({
             >
               <XIcon
               />
-              <span className="sr-only">Закрыть</span>
+              <span className="sr-only">{t.common.closeDialog}</span>
             </Button>
           </DialogPrimitive.Close>
         )}

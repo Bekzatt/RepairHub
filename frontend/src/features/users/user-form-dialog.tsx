@@ -18,15 +18,15 @@ import { useCurrentUser } from '@/features/auth/auth-store'
 import { USER_ROLES, type UserRole } from '@/features/auth/types'
 import { applyFieldErrors, errorMessage } from '@/lib/form-errors'
 import { emailSchema, passwordSchema } from '@/lib/validation'
-import { ru } from '@/locales/ru'
+import { t } from '@/locales'
 import { useCreateUser, useUpdateUser } from './api'
 import { assignableRoles } from './permissions'
 import type { User } from './types'
 
 const baseSchema = z.object({
-  fullName: z.string().trim().min(1, { error: ru.validation.required }).max(200, { error: ru.validation.tooLong }),
-  phone: z.string().trim().max(32, { error: ru.validation.tooLong }),
-  role: z.enum(USER_ROLES, { error: ru.validation.required }),
+  fullName: z.string().trim().min(1, { error: t.validation.required }).max(200, { error: t.validation.tooLong }),
+  phone: z.string().trim().max(32, { error: t.validation.tooLong }),
+  role: z.enum(USER_ROLES, { error: t.validation.required }),
 })
 const createSchema = baseSchema.extend({ email: emailSchema, password: passwordSchema })
 // Email and password are set only when creating; on edit they are carried but not validated.
@@ -46,7 +46,7 @@ export function UserFormDialog({ user, open, onOpenChange, onDone }: UserFormDia
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{user ? ru.users.form.editTitle : ru.users.form.createTitle}</DialogTitle>
+          <DialogTitle>{user ? t.users.form.editTitle : t.users.form.createTitle}</DialogTitle>
           {user && <DialogDescription>{user.email}</DialogDescription>}
         </DialogHeader>
         {/* Mounted only while open, so every opening starts from fresh form state. */}
@@ -81,15 +81,15 @@ function UserForm({ user, onClose, onDone }: { user: User | null; onClose: () =>
     try {
       if (user) {
         await updateUser.mutateAsync({ id: user.id, fullName: values.fullName, phone, role: values.role })
-        onDone(ru.users.done.updated)
+        onDone(t.users.done.updated)
       } else {
         await createUser.mutateAsync({ ...values, phone })
-        onDone(ru.users.done.created)
+        onDone(t.users.done.created)
       }
       onClose()
     } catch (error) {
       const handled = applyFieldErrors(error, form.setError, ['fullName', 'email', 'phone', 'role', 'password'], {
-        password: ru.validation.passwordLength,
+        password: t.validation.passwordLength,
       })
       if (!handled) setFormError(errorMessage(error))
     }
@@ -99,25 +99,25 @@ function UserForm({ user, onClose, onDone }: { user: User | null; onClose: () =>
     <form onSubmit={onSubmit} noValidate className="space-y-4">
       {formError && <FormAlert>{formError}</FormAlert>}
 
-      <FormField label={ru.users.form.fullName} error={errors.fullName?.message}>
+      <FormField label={t.users.form.fullName} error={errors.fullName?.message}>
         {(field) => <Input {...field} autoComplete="off" {...form.register('fullName')} />}
       </FormField>
 
       {!user && (
-        <FormField label={ru.users.form.email} error={errors.email?.message}>
+        <FormField label={t.users.form.email} error={errors.email?.message}>
           {(field) => <Input {...field} type="email" autoComplete="off" {...form.register('email')} />}
         </FormField>
       )}
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <FormField label={ru.users.form.phone} optionalLabel={ru.users.form.phoneOptional} error={errors.phone?.message}>
+        <FormField label={t.users.form.phone} optionalLabel={t.users.form.phoneOptional} error={errors.phone?.message}>
           {(field) => <Input {...field} type="tel" autoComplete="off" {...form.register('phone')} />}
         </FormField>
 
         <FormField
-          label={ru.users.form.role}
+          label={t.users.form.role}
           error={errors.role?.message}
-          hint={isSelf ? ru.users.form.ownRoleLocked : undefined}
+          hint={isSelf ? t.users.form.ownRoleLocked : undefined}
         >
           {(field) => (
             <Controller
@@ -131,7 +131,7 @@ function UserForm({ user, onClose, onDone }: { user: User | null; onClose: () =>
                   <SelectContent>
                     {roleOptions.map((role) => (
                       <SelectItem key={role} value={role}>
-                        {ru.roles[role]}
+                        {t.roles[role]}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -143,17 +143,17 @@ function UserForm({ user, onClose, onDone }: { user: User | null; onClose: () =>
       </div>
 
       {!user && (
-        <FormField label={ru.users.form.password} error={errors.password?.message} hint={ru.users.form.passwordHint}>
+        <FormField label={t.users.form.password} error={errors.password?.message} hint={t.users.form.passwordHint}>
           {(field) => <Input {...field} type="text" autoComplete="new-password" {...form.register('password')} />}
         </FormField>
       )}
 
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onClose}>
-          {ru.users.form.cancel}
+          {t.users.form.cancel}
         </Button>
         <Button type="submit" disabled={isSubmitting}>
-          {user ? ru.users.form.save : ru.users.form.create}
+          {user ? t.users.form.save : t.users.form.create}
         </Button>
       </DialogFooter>
     </form>

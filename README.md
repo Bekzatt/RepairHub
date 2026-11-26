@@ -2,8 +2,9 @@
 
 Repair service management for laptop, computer, smartphone and printer repair shops.
 
-**Status:** Phase 1 — workshops, staff accounts, authentication and authorization.
-Business modules (orders, customers, inventory, …) are still placeholders.
+**Status:** Phase 2 — customers, devices, repair orders with a controlled workflow and history,
+on top of Phase 1 (workshops, staff accounts, authentication and authorization).
+Inventory, payments, expenses, warranty, notifications and reports are still placeholders.
 
 ## Stack
 
@@ -22,9 +23,9 @@ backend/
   Directory.Build.props          shared build settings (net10.0, nullable, warnings as errors)
   src/
     RepairHub.Api                HTTP host: controllers, JWT setup, cookies, error mapping, create-workshop command
-    RepairHub.Application        use cases (auth, users, workshop), DTOs, validation, permission rules
-    RepairHub.Domain             entities (Workshop, User, RefreshToken) and their behaviour
-    RepairHub.Infrastructure     EF Core context, tenant query filters, migrations, password hashing
+    RepairHub.Application        use cases (auth, users, customers, devices, repair orders), DTOs, validation, permissions
+    RepairHub.Domain             entities (Workshop, User, Customer, Device, RepairOrder, history) and the order workflow
+    RepairHub.Infrastructure     EF Core context, tenant query filters, order numbering, migrations, password hashing
   tests/RepairHub.Tests          unit tests + API integration tests on real PostgreSQL (Testcontainers)
 frontend/                        React application
 docker-compose.yml               PostgreSQL + API
@@ -131,6 +132,89 @@ authenticated workshop it matches no rows. Records of another workshop return 40
 is possible only through `TenantFilterBypass.AcrossAllWorkshops()`, whose callers are allow-listed in
 `TenantFilterGuardTests` (login/refresh, token validation, bootstrap).
 
+## Customers, devices and repair orders
+
+- **Customers** belong to one workshop and are archived, never deleted. Phones are stored as entered (any country
+  format, 5–20 digits); duplicates are detected by a match key = the last 10 digits, so `+7 701…`, `8 701…` and
+  `701…` match. Creating a customer with a phone that already exists returns `409 customer_phone_exists` with the
+  matches unless the request sets `allowDuplicatePhone: true`. Customers are never merged automatically.
+- **Devices** belong to a customer; serial number and IMEI are optional and not unique. A device is reused for
+  every repair. Archived customers/devices cannot get new orders; archiving with open orders is refused.
+- **Repair orders** keep a **snapshot** of the customer's name/phone and the device details taken at creation.
+  Editing the customer or device never changes existing orders; a wrong snapshot is corrected on the order itself
+  (`PUT /api/repair-orders/{id}/snapshot`) and the old/new values go to the history.
+- **Creation is one transaction** (`POST /api/repair-orders`): optional new customer, optional new device, the order
+  number, the order and its first history events — all or nothing.
+- **Numbers** look like `RH-2026-000152`: per workshop, restarting every year by the workshop's local date. A counter
+  row per (workshop, year) is incremented with an atomic `INSERT … ON CONFLICT DO UPDATE … RETURNING` inside the
+  creation transaction: concurrent creations queue on that row, numbers are never duplicated and a rolled-back
+  creation leaves no gap.
+- **Optimistic concurrency:** every order change sends the `version` it read; a stale version returns
+  `409 concurrency_conflict` (the UI reloads the order and asks to retry).
+- **History** (`GET /api/repair-orders/{id}/history`) is append-only: status changes, outcome, assignment,
+  diagnostics, intake/price/date changes, snapshot corrections and notes, each with old/new value, actor and UTC
+  time. There is no API to edit or delete events, and the DbContext refuses to update or delete them.
+
+### Status workflow
+
+```
+Received ─► Diagnostics ─► AwaitingApproval ─► InRepair ◄─► WaitingForParts
+   │            │  ▲              │               │
+   │            │  └──────────────┘               ▼
+   └────────────┴──────────────────────────► ReadyForPickup ─► Issued
+Cancelled: only before repair work started (never after InRepair)
+```
+
+| From | To | Who |
+|---|---|---|
+| Received | Diagnostics, InRepair | Owner/Admin, assigned Technician |
+| Diagnostics | AwaitingApproval, InRepair, WaitingForParts, ReadyForPickup (NotRepaired/Declined) | Owner/Admin, assigned Technician |
+| AwaitingApproval | InRepair, WaitingForParts, ReadyForPickup (NotRepaired/Declined) | Owner/Admin, Receptionist, assigned Technician |
+| AwaitingApproval | Diagnostics | Owner/Admin, assigned Technician |
+| WaitingForParts | InRepair, ReadyForPickup (NotRepaired/Declined) | Owner/Admin, assigned Technician |
+| WaitingForParts | AwaitingApproval | Owner/Admin, Receptionist, assigned Technician |
+| InRepair | WaitingForParts, AwaitingApproval, ReadyForPickup (any outcome) | Owner/Admin, assigned Technician |
+| ReadyForPickup | InRepair (rework) | Owner/Admin, Receptionist, assigned Technician |
+| ReadyForPickup | Issued | Owner/Admin, Receptionist |
+| Received, Diagnostics, AwaitingApproval, WaitingForParts | Cancelled (reason required, only if never InRepair) | Owner/Admin, Receptionist |
+
+`ReadyForPickup` requires an outcome: `Repaired` (only from InRepair), `NotRepaired` or `Declined`. When work has
+started and the customer declines, the order goes to ReadyForPickup → Issued, so the handover is recorded.
+`Issued` and `Cancelled` are final; a returning device gets a new order. The rules live in one table
+(`RepairOrderWorkflow`); the API returns `allowedTransitions` for the current user, and the UI only shows those.
+
+### Permissions
+
+| Action | Owner / Admin | Receptionist | Technician |
+|---|---|---|---|
+| Customers and devices: view, create, edit | ✓ | ✓ | — (sees contacts inside orders) |
+| Archive / restore customers and devices | ✓ | — | — |
+| View all orders of the workshop, history | ✓ | ✓ | ✓ |
+| Create orders, edit intake, correct snapshots | ✓ | ✓ | — |
+| Prices and expected completion date | ✓ | ✓ | — |
+| Assign / reassign technician | ✓ | ✓ | — |
+| Take an unassigned order ("Take order", atomic) | ✓ | — | ✓ |
+| Diagnostics | ✓ | — | assigned orders only |
+| Status changes | see the table above | | |
+| Notes (also on closed orders) | ✓ | ✓ | ✓ |
+
+Only active Technicians, Admins and Owners can be assigned. "Take order" is one conditional `UPDATE … WHERE
+assigned_technician_id IS NULL`, so when two technicians take the same order at once exactly one succeeds and the
+other gets `409 concurrency_conflict`.
+
+**Tenant isolation** for these tables uses the same fail-closed query filter as Phase 1. In addition, PostgreSQL
+foreign keys on `(workshop_id, …)` pairs make it impossible to link a device, order, technician or history event to
+another workshop's record, even if application code had a bug.
+
+## Localization
+
+All UI text lives in `frontend/src/locales/ru.ts` (reference) and `kk.ts` (Kazakh); the compiler checks that both
+have the same keys. The language switch (login page and user menu) is saved in the browser and applied with a page
+reload; the session survives it. Statuses, device types, outcomes, validation messages and API error codes are
+translated on the client — the API returns language-independent codes. Dates are shown in the workshop's time zone
+(numeric in the Kazakh UI, because browsers' Kazakh month names are often missing) and money in the workshop
+currency. Kazakh texts should be reviewed by a native speaker from the workshop before going live.
+
 ## Configuration
 
 | Setting | Source | Notes |
@@ -198,5 +282,7 @@ npx shadcn@latest add <component>
 
 - Timestamps are stored in UTC and displayed in the workshop's time zone (default `Asia/Almaty`).
 - Money uses `decimal` (backend); the workshop currency defaults to KZT.
-- UI copy lives in `frontend/src/locales/ru.ts` (Russian now, Kazakh planned).
-- API errors are RFC 7807 problem details with a stable `code` (e.g. `email_taken`, `last_owner`).
+- UI copy lives in `frontend/src/locales/` (Russian and Kazakh); never hard-code text in components.
+- API errors are RFC 7807 problem details with a stable `code` (e.g. `email_taken`, `last_owner`,
+  `invalid_status_transition`, `concurrency_conflict`).
+- Calendar dates without time (expected completion date) are `date` columns / `"YYYY-MM-DD"` in the workshop's time zone.

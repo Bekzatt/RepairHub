@@ -21,7 +21,7 @@ import { DeactivateDialog, ResetPasswordDialog } from '@/features/users/user-act
 import { UserFormDialog } from '@/features/users/user-form-dialog'
 import { errorMessage } from '@/lib/form-errors'
 import { cn } from '@/lib/utils'
-import { ru } from '@/locales/ru'
+import { t } from '@/locales'
 
 const roleTone: Record<UserRole, string> = {
   Owner: 'bg-sidebar text-white',
@@ -63,7 +63,7 @@ export function UsersPage() {
   async function activate(user: User) {
     try {
       await setActive.mutateAsync({ id: user.id, active: true })
-      showDone(ru.users.done.activated)
+      showDone(t.users.done.activated)
     } catch (error) {
       setActionError(errorMessage(error))
     }
@@ -77,12 +77,12 @@ export function UsersPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight sm:text-[28px]">{ru.users.title}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{ru.users.description}</p>
+          <h1 className="text-2xl font-semibold tracking-tight sm:text-[28px]">{t.users.title}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{t.users.description}</p>
         </div>
         <Button onClick={() => setEditing({ user: null })} className="self-start sm:self-auto">
           <Plus />
-          {ru.users.add}
+          {t.users.add}
         </Button>
       </div>
 
@@ -107,8 +107,8 @@ export function UsersPage() {
             <Input
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              placeholder={ru.users.searchPlaceholder}
-              aria-label={ru.users.searchPlaceholder}
+              placeholder={t.users.searchPlaceholder}
+              aria-label={t.users.searchPlaceholder}
               className="pl-9"
             />
           </div>
@@ -117,14 +117,14 @@ export function UsersPage() {
               value={filters.role}
               onValueChange={(role) => setFilters((f) => ({ ...f, role: role as UserFilters['role'], page: 1 }))}
             >
-              <SelectTrigger className="w-full sm:w-44" aria-label={ru.users.columns.role}>
+              <SelectTrigger className="w-full sm:w-44" aria-label={t.users.columns.role}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">{ru.users.allRoles}</SelectItem>
+                <SelectItem value="all">{t.users.allRoles}</SelectItem>
                 {USER_ROLES.map((role) => (
                   <SelectItem key={role} value={role}>
-                    {ru.roles[role]}
+                    {t.roles[role]}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -133,13 +133,13 @@ export function UsersPage() {
               value={filters.status}
               onValueChange={(status) => setFilters((f) => ({ ...f, status: status as UserFilters['status'], page: 1 }))}
             >
-              <SelectTrigger className="w-full sm:w-40" aria-label={ru.users.columns.status}>
+              <SelectTrigger className="w-full sm:w-40" aria-label={t.users.columns.status}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">{ru.users.allStatuses}</SelectItem>
-                <SelectItem value="active">{ru.users.activeFilter}</SelectItem>
-                <SelectItem value="inactive">{ru.users.inactiveFilter}</SelectItem>
+                <SelectItem value="all">{t.users.allStatuses}</SelectItem>
+                <SelectItem value="active">{t.users.activeFilter}</SelectItem>
+                <SelectItem value="inactive">{t.users.inactiveFilter}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -148,9 +148,9 @@ export function UsersPage() {
         {/* Table */}
         {users.isError ? (
           <div className="px-6 py-14 text-center">
-            <p className="text-sm text-muted-foreground">{ru.users.loadError}</p>
+            <p className="text-sm text-muted-foreground">{t.users.loadError}</p>
             <Button variant="outline" className="mt-4" onClick={() => void users.refetch()}>
-              {ru.users.retry}
+              {t.users.retry}
             </Button>
           </div>
         ) : (
@@ -158,12 +158,12 @@ export function UsersPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="pl-4">{ru.users.columns.name}</TableHead>
-                  <TableHead>{ru.users.columns.role}</TableHead>
-                  <TableHead className="hidden md:table-cell">{ru.users.columns.phone}</TableHead>
-                  <TableHead>{ru.users.columns.status}</TableHead>
+                  <TableHead className="pl-4">{t.users.columns.name}</TableHead>
+                  <TableHead>{t.users.columns.role}</TableHead>
+                  <TableHead className="hidden md:table-cell">{t.users.columns.phone}</TableHead>
+                  <TableHead>{t.users.columns.status}</TableHead>
                   <TableHead className="w-12 pr-4">
-                    <span className="sr-only">{ru.users.columns.actions}</span>
+                    <span className="sr-only">{t.users.columns.actions}</span>
                   </TableHead>
                 </TableRow>
               </TableHeader>
@@ -176,14 +176,14 @@ export function UsersPage() {
                           <div className="font-medium text-foreground">
                             {user.fullName}
                             {user.id === me.id && (
-                              <span className="ml-2 text-xs font-normal text-muted-foreground">({ru.users.you})</span>
+                              <span className="ml-2 text-xs font-normal text-muted-foreground">({t.users.you})</span>
                             )}
                           </div>
                           <div className="text-xs text-muted-foreground">{user.email}</div>
                         </TableCell>
                         <TableCell>
                           <Badge className={cn('rounded-full border-0 font-medium', roleTone[user.role])}>
-                            {ru.roles[user.role]}
+                            {t.roles[user.role]}
                           </Badge>
                         </TableCell>
                         <TableCell className="hidden tabular-nums md:table-cell">{user.phone ?? '—'}</TableCell>
@@ -193,7 +193,7 @@ export function UsersPage() {
                               aria-hidden
                               className={cn('size-1.5 rounded-full', user.isActive ? 'bg-success' : 'bg-muted-foreground/50')}
                             />
-                            {user.isActive ? ru.users.active : ru.users.inactive}
+                            {user.isActive ? t.users.active : t.users.inactive}
                           </span>
                         </TableCell>
                         <TableCell className="pr-4 text-right">
@@ -215,7 +215,7 @@ export function UsersPage() {
             {data && data.items.length === 0 && (
               <div className="flex flex-col items-center px-6 py-14 text-center">
                 <UserX className="mb-3 size-6 text-muted-foreground" strokeWidth={1.75} />
-                <p className="text-sm text-muted-foreground">{ru.users.empty}</p>
+                <p className="text-sm text-muted-foreground">{t.users.empty}</p>
               </div>
             )}
           </div>
@@ -224,7 +224,7 @@ export function UsersPage() {
         {/* Pagination */}
         {data && data.totalCount > PAGE_SIZE && (
           <div className="flex items-center justify-between gap-3 border-t px-4 py-3 text-sm">
-            <span className="text-muted-foreground tabular-nums">{ru.users.pageInfo(from, to, data.totalCount)}</span>
+            <span className="text-muted-foreground tabular-nums">{t.users.pageInfo(from, to, data.totalCount)}</span>
             <div className="flex gap-2">
               <Button
                 variant="outline"
@@ -232,7 +232,7 @@ export function UsersPage() {
                 disabled={data.page <= 1}
                 onClick={() => setFilters((f) => ({ ...f, page: f.page - 1 }))}
               >
-                {ru.users.prev}
+                {t.users.prev}
               </Button>
               <Button
                 variant="outline"
@@ -240,7 +240,7 @@ export function UsersPage() {
                 disabled={to >= data.totalCount}
                 onClick={() => setFilters((f) => ({ ...f, page: f.page + 1 }))}
               >
-                {ru.users.next}
+                {t.users.next}
               </Button>
             </div>
           </div>
@@ -278,22 +278,22 @@ function RowActions({ user, isSelf, canManage, onEdit, onReset, onDeactivate, on
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon-sm" aria-label={`${ru.users.rowActions}: ${user.fullName}`}>
+        <Button variant="ghost" size="icon-sm" aria-label={`${t.users.rowActions}: ${user.fullName}`}>
           <MoreHorizontal />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuItem onSelect={onEdit}>{ru.users.edit}</DropdownMenuItem>
+        <DropdownMenuItem onSelect={onEdit}>{t.users.edit}</DropdownMenuItem>
         {canAdminister && (
           <>
-            <DropdownMenuItem onSelect={onReset}>{ru.users.resetPassword}</DropdownMenuItem>
+            <DropdownMenuItem onSelect={onReset}>{t.users.resetPassword}</DropdownMenuItem>
             <DropdownMenuSeparator />
             {user.isActive ? (
               <DropdownMenuItem variant="destructive" onSelect={onDeactivate}>
-                {ru.users.deactivate}
+                {t.users.deactivate}
               </DropdownMenuItem>
             ) : (
-              <DropdownMenuItem onSelect={onActivate}>{ru.users.activate}</DropdownMenuItem>
+              <DropdownMenuItem onSelect={onActivate}>{t.users.activate}</DropdownMenuItem>
             )}
           </>
         )}

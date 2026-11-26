@@ -15,7 +15,7 @@ import { Input } from '@/components/ui/input'
 import { FormAlert, FormField } from '@/components/form-field'
 import { applyFieldErrors, errorMessage } from '@/lib/form-errors'
 import { passwordSchema } from '@/lib/validation'
-import { ru } from '@/locales/ru'
+import { t } from '@/locales'
 import { useResetPassword, useSetUserActive } from './api'
 import type { User } from './types'
 
@@ -32,8 +32,8 @@ export function ResetPasswordDialog({ user, onClose, onDone }: ActionDialogProps
     <Dialog open={user !== null} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{ru.users.resetDialog.title}</DialogTitle>
-          <DialogDescription>{user && ru.users.resetDialog.description(user.fullName)}</DialogDescription>
+          <DialogTitle>{t.users.resetDialog.title}</DialogTitle>
+          <DialogDescription>{user && t.users.resetDialog.description(user.fullName)}</DialogDescription>
         </DialogHeader>
         {user && <ResetPasswordForm user={user} onClose={onClose} onDone={onDone} />}
       </DialogContent>
@@ -51,10 +51,10 @@ function ResetPasswordForm({ user, onClose, onDone }: ActionDialogProps & { user
   const onSubmit = form.handleSubmit(async ({ newPassword }) => {
     try {
       await resetPassword.mutateAsync({ id: user.id, newPassword })
-      onDone(ru.users.done.passwordReset)
+      onDone(t.users.done.passwordReset)
       onClose()
     } catch (error) {
-      if (!applyFieldErrors(error, form.setError, ['newPassword'], { newPassword: ru.validation.passwordLength }))
+      if (!applyFieldErrors(error, form.setError, ['newPassword'], { newPassword: t.validation.passwordLength }))
         setFormError(errorMessage(error))
     }
   })
@@ -62,15 +62,15 @@ function ResetPasswordForm({ user, onClose, onDone }: ActionDialogProps & { user
   return (
     <form onSubmit={onSubmit} noValidate className="space-y-4">
       {formError && <FormAlert>{formError}</FormAlert>}
-      <FormField label={ru.changePassword.next} error={form.formState.errors.newPassword?.message} hint={ru.users.form.passwordHint}>
+      <FormField label={t.changePassword.next} error={form.formState.errors.newPassword?.message} hint={t.users.form.passwordHint}>
         {(field) => <Input {...field} type="text" autoComplete="new-password" {...form.register('newPassword')} />}
       </FormField>
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onClose}>
-          {ru.users.form.cancel}
+          {t.users.form.cancel}
         </Button>
         <Button type="submit" disabled={form.formState.isSubmitting}>
-          {ru.users.resetDialog.submit}
+          {t.users.resetDialog.submit}
         </Button>
       </DialogFooter>
     </form>
@@ -82,8 +82,8 @@ export function DeactivateDialog({ user, onClose, onDone }: ActionDialogProps) {
     <Dialog open={user !== null} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{ru.users.deactivateDialog.title}</DialogTitle>
-          <DialogDescription>{user && ru.users.deactivateDialog.description(user.fullName)}</DialogDescription>
+          <DialogTitle>{t.users.deactivateDialog.title}</DialogTitle>
+          <DialogDescription>{user && t.users.deactivateDialog.description(user.fullName)}</DialogDescription>
         </DialogHeader>
         {user && <DeactivateConfirm user={user} onClose={onClose} onDone={onDone} />}
       </DialogContent>
@@ -98,7 +98,7 @@ function DeactivateConfirm({ user, onClose, onDone }: ActionDialogProps & { user
   async function confirm() {
     try {
       await setActive.mutateAsync({ id: user.id, active: false })
-      onDone(ru.users.done.deactivated)
+      onDone(t.users.done.deactivated)
       onClose()
     } catch (e) {
       setError(errorMessage(e))
@@ -110,10 +110,10 @@ function DeactivateConfirm({ user, onClose, onDone }: ActionDialogProps & { user
       {error && <FormAlert>{error}</FormAlert>}
       <DialogFooter>
         <Button variant="outline" onClick={onClose}>
-          {ru.users.form.cancel}
+          {t.users.form.cancel}
         </Button>
         <Button variant="destructive" onClick={() => void confirm()} disabled={setActive.isPending}>
-          {ru.users.deactivateDialog.submit}
+          {t.users.deactivateDialog.submit}
         </Button>
       </DialogFooter>
     </>

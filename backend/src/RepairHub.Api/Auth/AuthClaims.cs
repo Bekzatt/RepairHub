@@ -14,4 +14,7 @@ public static class AuthPolicies
 {
     public const string ManageUsers = nameof(ManageUsers);
     public const string ManageWorkshop = nameof(ManageWorkshop);
+
+    /// <summary>Owner, Admin, Receptionist: customers and devices. Finer rules live in the application services.</summary>
+    public const string FrontOffice = nameof(FrontOffice);
 }

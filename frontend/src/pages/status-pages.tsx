@@ -1,13 +1,13 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router'
 import { Button } from '@/components/ui/button'
-import { ru } from '@/locales/ru'
+import { t } from '@/locales'
 
 export function NotFoundPage() {
   return (
-    <StatusMessage title={ru.notFound.title} text={ru.notFound.text}>
+    <StatusMessage title={t.notFound.title} text={t.notFound.text}>
       <Button asChild variant="outline">
-        <Link to="/">{ru.placeholder.back}</Link>
+        <Link to="/">{t.placeholder.back}</Link>
       </Button>
     </StatusMessage>
   )
@@ -17,8 +17,8 @@ export function NotFoundPage() {
 export function RouteErrorPage() {
   return (
     <div className="flex min-h-dvh items-center justify-center p-6">
-      <StatusMessage title={ru.error.title} text={ru.error.text}>
-        <Button onClick={() => window.location.reload()}>{ru.error.reload}</Button>
+      <StatusMessage title={t.error.title} text={t.error.text}>
+        <Button onClick={() => window.location.reload()}>{t.error.reload}</Button>
       </StatusMessage>
     </div>
   )

@@ -1,3 +1,4 @@
+import { t } from "@/locales"
 "use client"
 
 import * as React from "react"
@@ -77,7 +78,7 @@ function SheetContent({
             >
               <XIcon
               />
-              <span className="sr-only">Закрыть</span>
+              <span className="sr-only">{t.common.closeDialog}</span>
             </Button>
           </SheetPrimitive.Close>
         )}

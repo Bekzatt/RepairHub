@@ -22,6 +22,452 @@ namespace RepairHub.Infrastructure.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("RepairHub.Domain.Customers.Customer", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("AdditionalPhone")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("additional_phone");
+
+                    b.Property<string>("AdditionalPhoneKey")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("additional_phone_key");
+
+                    b.Property<DateTimeOffset?>("ArchivedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("archived_at");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(254)
+                        .HasColumnType("character varying(254)")
+                        .HasColumnName("email");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("full_name");
+
+                    b.Property<bool>("IsArchived")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_archived");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("notes");
+
+                    b.Property<string>("Phone")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("phone");
+
+                    b.Property<string>("PhoneKey")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("phone_key");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("WorkshopId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("workshop_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_customers");
+
+                    b.HasAlternateKey("WorkshopId", "Id")
+                        .HasName("ak_customers_workshop_id_id");
+
+                    b.HasIndex("WorkshopId", "AdditionalPhoneKey")
+                        .HasDatabaseName("ix_customers_workshop_id_additional_phone_key");
+
+                    b.HasIndex("WorkshopId", "FullName")
+                        .HasDatabaseName("ix_customers_workshop_id_full_name");
+
+                    b.HasIndex("WorkshopId", "PhoneKey")
+                        .HasDatabaseName("ix_customers_workshop_id_phone_key");
+
+                    b.ToTable("customers", (string)null);
+                });
+
+            modelBuilder.Entity("RepairHub.Domain.Devices.Device", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset?>("ArchivedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("archived_at");
+
+                    b.Property<string>("Brand")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("brand");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CustomerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("customer_id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("Imei")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("imei");
+
+                    b.Property<bool>("IsArchived")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_archived");
+
+                    b.Property<string>("Model")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)")
+                        .HasColumnName("model");
+
+                    b.Property<string>("SerialNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("serial_number");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("type");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("WorkshopId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("workshop_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_devices");
+
+                    b.HasAlternateKey("WorkshopId", "Id")
+                        .HasName("ak_devices_workshop_id_id");
+
+                    b.HasIndex("WorkshopId", "CustomerId")
+                        .HasDatabaseName("ix_devices_workshop_id_customer_id");
+
+                    b.HasIndex("WorkshopId", "Imei")
+                        .HasDatabaseName("ix_devices_workshop_id_imei");
+
+                    b.HasIndex("WorkshopId", "SerialNumber")
+                        .HasDatabaseName("ix_devices_workshop_id_serial_number");
+
+                    b.ToTable("devices", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_devices_type", "type IN ('Laptop', 'Desktop', 'AllInOne', 'Printer', 'Smartphone', 'Tablet', 'Monitor', 'Other')");
+                        });
+                });
+
+            modelBuilder.Entity("RepairHub.Domain.RepairOrders.RepairOrder", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Accessories")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("accessories");
+
+                    b.Property<Guid?>("AssignedTechnicianId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("assigned_technician_id");
+
+                    b.Property<string>("CancellationReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("cancellation_reason");
+
+                    b.Property<DateTimeOffset?>("CancelledAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("cancelled_at");
+
+                    b.Property<DateTimeOffset?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("completed_at");
+
+                    b.Property<string>("Condition")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("condition");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_id");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character(3)")
+                        .HasColumnName("currency")
+                        .IsFixedLength();
+
+                    b.Property<Guid>("CustomerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("customer_id");
+
+                    b.Property<string>("CustomerName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("customer_name");
+
+                    b.Property<string>("CustomerPhone")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("customer_phone");
+
+                    b.Property<string>("DeviceBrand")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("device_brand");
+
+                    b.Property<Guid>("DeviceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("device_id");
+
+                    b.Property<string>("DeviceImei")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("device_imei");
+
+                    b.Property<string>("DeviceModel")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)")
+                        .HasColumnName("device_model");
+
+                    b.Property<string>("DeviceSerialNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("device_serial_number");
+
+                    b.Property<string>("DeviceType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("device_type");
+
+                    b.Property<string>("Diagnostics")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("diagnostics");
+
+                    b.Property<decimal?>("EstimatedPrice")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)")
+                        .HasColumnName("estimated_price");
+
+                    b.Property<DateOnly?>("ExpectedCompletionDate")
+                        .HasColumnType("date")
+                        .HasColumnName("expected_completion_date");
+
+                    b.Property<decimal?>("FinalPrice")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)")
+                        .HasColumnName("final_price");
+
+                    b.Property<DateTimeOffset?>("IssuedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("issued_at");
+
+                    b.Property<string>("Number")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("number");
+
+                    b.Property<int>("NumberSequence")
+                        .HasColumnType("integer")
+                        .HasColumnName("number_seq");
+
+                    b.Property<int>("NumberYear")
+                        .HasColumnType("integer")
+                        .HasColumnName("number_year");
+
+                    b.Property<string>("Outcome")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("outcome");
+
+                    b.Property<string>("Problem")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("problem");
+
+                    b.Property<DateTimeOffset>("ReceivedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("received_at");
+
+                    b.Property<DateTimeOffset?>("StartedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("started_at");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("status");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UpdatedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by_id");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<Guid>("WorkshopId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("workshop_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_repair_orders");
+
+                    b.HasAlternateKey("WorkshopId", "Id")
+                        .HasName("ak_repair_orders_workshop_id_id");
+
+                    b.HasIndex("WorkshopId", "CreatedById")
+                        .HasDatabaseName("ix_repair_orders_workshop_id_created_by_id");
+
+                    b.HasIndex("WorkshopId", "CustomerId")
+                        .HasDatabaseName("ix_repair_orders_workshop_id_customer_id");
+
+                    b.HasIndex("WorkshopId", "DeviceId")
+                        .HasDatabaseName("ix_repair_orders_workshop_id_device_id");
+
+                    b.HasIndex("WorkshopId", "Number")
+                        .IsUnique()
+                        .HasDatabaseName("ux_repair_orders_workshop_id_number");
+
+                    b.HasIndex("WorkshopId", "ReceivedAt")
+                        .HasDatabaseName("ix_repair_orders_workshop_id_received_at");
+
+                    b.HasIndex("WorkshopId", "UpdatedById")
+                        .HasDatabaseName("ix_repair_orders_workshop_id_updated_by_id");
+
+                    b.HasIndex("WorkshopId", "AssignedTechnicianId", "Status")
+                        .HasDatabaseName("ix_repair_orders_workshop_id_assigned_technician_id_status");
+
+                    b.HasIndex("WorkshopId", "Status", "ReceivedAt")
+                        .HasDatabaseName("ix_repair_orders_workshop_id_status_received_at");
+
+                    b.ToTable("repair_orders", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_repair_orders_device_type", "device_type IN ('Laptop', 'Desktop', 'AllInOne', 'Printer', 'Smartphone', 'Tablet', 'Monitor', 'Other')");
+
+                            t.HasCheckConstraint("ck_repair_orders_outcome", "outcome IS NULL OR outcome IN ('Repaired', 'NotRepaired', 'Declined')");
+
+                            t.HasCheckConstraint("ck_repair_orders_prices", "(estimated_price IS NULL OR estimated_price >= 0) AND (final_price IS NULL OR final_price >= 0)");
+
+                            t.HasCheckConstraint("ck_repair_orders_status", "status IN ('Received', 'Diagnostics', 'AwaitingApproval', 'WaitingForParts', 'InRepair', 'ReadyForPickup', 'Issued', 'Cancelled')");
+                        });
+                });
+
+            modelBuilder.Entity("RepairHub.Domain.RepairOrders.RepairOrderEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ActorUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_user_id");
+
+                    b.Property<string>("Comment")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("comment");
+
+                    b.Property<string>("NewValue")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("new_value");
+
+                    b.Property<DateTimeOffset>("OccurredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("occurred_at");
+
+                    b.Property<string>("OldValue")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("old_value");
+
+                    b.Property<Guid>("RepairOrderId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("repair_order_id");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("type");
+
+                    b.Property<Guid>("WorkshopId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("workshop_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_repair_order_events");
+
+                    b.HasIndex("RepairOrderId", "OccurredAt")
+                        .HasDatabaseName("ix_repair_order_events_repair_order_id_occurred_at");
+
+                    b.HasIndex("WorkshopId", "ActorUserId")
+                        .HasDatabaseName("ix_repair_order_events_workshop_id_actor_user_id");
+
+                    b.HasIndex("WorkshopId", "RepairOrderId")
+                        .HasDatabaseName("ix_repair_order_events_workshop_id_repair_order_id");
+
+                    b.ToTable("repair_order_events", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_repair_order_events_type", "type IN ('Created', 'StatusChanged', 'OutcomeRecorded', 'TechnicianAssigned', 'DiagnosticsUpdated', 'ProblemUpdated', 'ConditionUpdated', 'AccessoriesUpdated', 'EstimateChanged', 'FinalPriceChanged', 'ExpectedDateChanged', 'CustomerInfoCorrected', 'DeviceInfoCorrected', 'NoteAdded')");
+                        });
+                });
+
             modelBuilder.Entity("RepairHub.Domain.Users.RefreshToken", b =>
                 {
                     b.Property<Guid>("Id")
@@ -139,6 +585,9 @@ namespace RepairHub.Infrastructure.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_users");
 
+                    b.HasAlternateKey("WorkshopId", "Id")
+                        .HasName("ak_users_workshop_id_id");
+
                     b.HasIndex("NormalizedEmail")
                         .IsUnique()
                         .HasDatabaseName("ux_users_normalized_email");
@@ -201,6 +650,108 @@ namespace RepairHub.Infrastructure.Persistence.Migrations
                     b.ToTable("workshops", (string)null);
                 });
 
+            modelBuilder.Entity("RepairHub.Infrastructure.Persistence.RepairOrderCounter", b =>
+                {
+                    b.Property<Guid>("WorkshopId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("workshop_id");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("integer")
+                        .HasColumnName("year");
+
+                    b.Property<int>("LastValue")
+                        .HasColumnType("integer")
+                        .HasColumnName("last_value");
+
+                    b.HasKey("WorkshopId", "Year")
+                        .HasName("pk_repair_order_counters");
+
+                    b.ToTable("repair_order_counters", (string)null);
+                });
+
+            modelBuilder.Entity("RepairHub.Domain.Customers.Customer", b =>
+                {
+                    b.HasOne("RepairHub.Domain.Workshops.Workshop", null)
+                        .WithMany()
+                        .HasForeignKey("WorkshopId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_customers_workshops_workshop_id");
+                });
+
+            modelBuilder.Entity("RepairHub.Domain.Devices.Device", b =>
+                {
+                    b.HasOne("RepairHub.Domain.Customers.Customer", null)
+                        .WithMany()
+                        .HasForeignKey("WorkshopId", "CustomerId")
+                        .HasPrincipalKey("WorkshopId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_devices_customers_workshop_id_customer_id");
+                });
+
+            modelBuilder.Entity("RepairHub.Domain.RepairOrders.RepairOrder", b =>
+                {
+                    b.HasOne("RepairHub.Domain.Users.User", null)
+                        .WithMany()
+                        .HasForeignKey("WorkshopId", "AssignedTechnicianId")
+                        .HasPrincipalKey("WorkshopId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_repair_orders_users_workshop_id_assigned_technician_id");
+
+                    b.HasOne("RepairHub.Domain.Users.User", null)
+                        .WithMany()
+                        .HasForeignKey("WorkshopId", "CreatedById")
+                        .HasPrincipalKey("WorkshopId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_repair_orders_users_workshop_id_created_by_id");
+
+                    b.HasOne("RepairHub.Domain.Customers.Customer", null)
+                        .WithMany()
+                        .HasForeignKey("WorkshopId", "CustomerId")
+                        .HasPrincipalKey("WorkshopId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_repair_orders_customers_workshop_id_customer_id");
+
+                    b.HasOne("RepairHub.Domain.Devices.Device", null)
+                        .WithMany()
+                        .HasForeignKey("WorkshopId", "DeviceId")
+                        .HasPrincipalKey("WorkshopId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_repair_orders_devices_workshop_id_device_id");
+
+                    b.HasOne("RepairHub.Domain.Users.User", null)
+                        .WithMany()
+                        .HasForeignKey("WorkshopId", "UpdatedById")
+                        .HasPrincipalKey("WorkshopId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_repair_orders_users_workshop_id_updated_by_id");
+                });
+
+            modelBuilder.Entity("RepairHub.Domain.RepairOrders.RepairOrderEvent", b =>
+                {
+                    b.HasOne("RepairHub.Domain.Users.User", null)
+                        .WithMany()
+                        .HasForeignKey("WorkshopId", "ActorUserId")
+                        .HasPrincipalKey("WorkshopId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_repair_order_events_users_workshop_id_actor_user_id");
+
+                    b.HasOne("RepairHub.Domain.RepairOrders.RepairOrder", null)
+                        .WithMany()
+                        .HasForeignKey("WorkshopId", "RepairOrderId")
+                        .HasPrincipalKey("WorkshopId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_repair_order_events_repair_orders_workshop_id_repair_order_");
+                });
+
             modelBuilder.Entity("RepairHub.Domain.Users.RefreshToken", b =>
                 {
                     b.HasOne("RepairHub.Domain.Users.User", null)
@@ -219,6 +770,16 @@ namespace RepairHub.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_users_workshops_workshop_id");
+                });
+
+            modelBuilder.Entity("RepairHub.Infrastructure.Persistence.RepairOrderCounter", b =>
+                {
+                    b.HasOne("RepairHub.Domain.Workshops.Workshop", null)
+                        .WithMany()
+                        .HasForeignKey("WorkshopId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_repair_order_counters_workshops_workshop_id");
                 });
 #pragma warning restore 612, 618
         }

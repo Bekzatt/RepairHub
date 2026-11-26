@@ -1,5 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using RepairHub.Domain.Customers;
+using RepairHub.Domain.Devices;
+using RepairHub.Domain.RepairOrders;
 using RepairHub.Domain.Users;
 using RepairHub.Domain.Workshops;
 
@@ -21,6 +24,14 @@ public interface IAppDbContext
     /// <summary>Not tenant-filtered; access only by token hash or user id inside the auth flow.</summary>
     DbSet<RefreshToken> RefreshTokens { get; }
 
+    // Tenant-filtered (ITenantOwned), like Users.
+    DbSet<Customer> Customers { get; }
+    DbSet<Device> Devices { get; }
+    DbSet<RepairOrder> RepairOrders { get; }
+
+    /// <summary>Append-only: SaveChanges refuses to modify or delete existing events.</summary>
+    DbSet<RepairOrderEvent> RepairOrderEvents { get; }
+
     DatabaseFacade Database { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
@@ -37,4 +48,10 @@ public interface IAppDbContext
     /// so two concurrent runs of the bootstrap command cannot both pass the duplicate checks.
     /// </summary>
     Task LockProvisioningAsync(CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Returns the next repair order sequence number for the workshop and year. Must run inside the transaction
+    /// that inserts the order: concurrency-safe, never returns the same value twice, and leaves no gap on rollback.
+    /// </summary>
+    Task<int> NextRepairOrderSequenceAsync(Guid workshopId, int year, CancellationToken cancellationToken);
 }

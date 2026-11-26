@@ -11,12 +11,7 @@ export interface User {
   updatedAt: string
 }
 
-export interface PagedResult<T> {
-  items: T[]
-  page: number
-  pageSize: number
-  totalCount: number
-}
+export type { PagedResult } from '@/lib/paged'
 
 export interface UserFilters {
   search: string

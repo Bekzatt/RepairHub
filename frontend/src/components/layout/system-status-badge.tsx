@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils'
-import { ru } from '@/locales/ru'
+import { t } from '@/locales'
 import type { SystemStatus } from '@/features/system/use-system-health'
 
 const dotClass: Record<SystemStatus, string> = {
@@ -16,7 +16,7 @@ export function SystemStatusBadge({ status }: { status: SystemStatus }) {
       className="inline-flex h-8 items-center gap-2 rounded-full border bg-card px-3 text-xs font-medium text-foreground"
     >
       <span aria-hidden className={cn('size-2 rounded-full', dotClass[status])} />
-      {ru.status.summary[status]}
+      {t.status.summary[status]}
     </span>
   )
 }

@@ -1,12 +1,12 @@
 import { useState } from 'react'
-import { Outlet } from 'react-router'
+import { Outlet, ScrollRestoration } from 'react-router'
 import { Menu } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet'
 import { useCurrentUser } from '@/features/auth/auth-store'
 import { useSystemHealth } from '@/features/system/use-system-health'
 import { formatLongDate } from '@/lib/format'
-import { ru } from '@/locales/ru'
+import { t } from '@/locales'
 import { SidebarNav } from './sidebar-nav'
 import { SystemStatusBadge } from './system-status-badge'
 import { UserMenu } from './user-menu'
@@ -27,8 +27,8 @@ export function AppShell() {
       {/* Mobile drawer */}
       <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
         <SheetContent side="left" className="w-72 border-none p-0 sm:max-w-72" showCloseButton={false}>
-          <SheetTitle className="sr-only">{ru.nav.menuTitle}</SheetTitle>
-          <SheetDescription className="sr-only">{ru.app.name}</SheetDescription>
+          <SheetTitle className="sr-only">{t.nav.menuTitle}</SheetTitle>
+          <SheetDescription className="sr-only">{t.app.name}</SheetDescription>
           <SidebarNav onNavigate={() => setMenuOpen(false)} />
         </SheetContent>
       </Sheet>
@@ -41,7 +41,7 @@ export function AppShell() {
               size="icon"
               className="-ml-2 lg:hidden"
               onClick={() => setMenuOpen(true)}
-              aria-label={ru.nav.openMenu}
+              aria-label={t.nav.openMenu}
             >
               <Menu />
             </Button>
@@ -57,6 +57,8 @@ export function AppShell() {
 
         <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
           <Outlet />
+          {/* New pages start at the top; back/forward restores the previous position. */}
+          <ScrollRestoration />
         </main>
       </div>
     </div>

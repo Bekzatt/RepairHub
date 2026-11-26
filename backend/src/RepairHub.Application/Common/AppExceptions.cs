@@ -5,9 +5,12 @@ namespace RepairHub.Application.Common;
 /// and exposes <see cref="Code"/> so clients can show localized messages.
 /// Messages are safe to show to clients and must not contain internal details.
 /// </summary>
-public abstract class AppException(string code, string message) : Exception(message)
+public abstract class AppException(string code, string message, Exception? inner = null) : Exception(message, inner)
 {
     public string Code { get; } = code;
+
+    /// <summary>Extra machine-readable data returned to the client (e.g. matching duplicates).</summary>
+    public IReadOnlyDictionary<string, object?>? Details { get; init; }
 }
 
 /// <summary>404 — the resource does not exist or belongs to another workshop (indistinguishable on purpose).</summary>
@@ -17,8 +20,15 @@ public sealed class NotFoundException() : AppException("not_found", "The request
 public sealed class ForbiddenException(string code = "forbidden", string message = "You do not have permission to perform this action.")
     : AppException(code, message);
 
+/// <summary>400 — the request refers to something unusable (archived customer, ineligible technician, ...).</summary>
+public sealed class InvalidRequestException(string code, string message) : AppException(code, message);
+
 /// <summary>409 — the operation conflicts with the current state (duplicate, last Owner, ...).</summary>
 public sealed class ConflictException(string code, string message) : AppException(code, message);
+
+/// <summary>409 — the record was changed by someone else since it was read (stale version, lost race).</summary>
+public sealed class ConcurrencyConflictException(Exception? inner = null)
+    : AppException(ErrorCodes.ConcurrencyConflict, "The record was changed by someone else. Reload and try again.", inner);
 
 /// <summary>401 — credentials or refresh token are invalid. Deliberately generic.</summary>
 public sealed class AuthenticationFailedException() : AppException("invalid_credentials", "Invalid credentials.");
@@ -49,4 +59,13 @@ public static class ErrorCodes
     public const string RoleNotAllowed = "role_not_allowed";
     public const string WorkshopsExist = "workshops_exist";
     public const string WorkshopNameTaken = "workshop_name_taken";
+    public const string ConcurrencyConflict = "concurrency_conflict";
+    public const string CustomerPhoneExists = "customer_phone_exists";
+    public const string CustomerArchived = "customer_archived";
+    public const string DeviceArchived = "device_archived";
+    public const string HasActiveOrders = "has_active_orders";
+    public const string DeviceCustomerMismatch = "device_customer_mismatch";
+    public const string TechnicianNotAssignable = "technician_not_assignable";
+    public const string NotAssigned = "not_assigned";
+    public const string ExpectedDateInPast = "expected_date_in_past";
 }

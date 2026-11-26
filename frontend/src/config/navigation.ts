@@ -14,9 +14,9 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import type { UserRole } from '@/features/auth/types'
-import { ru } from '@/locales/ru'
+import { t, type Messages } from '@/locales'
 
-export type ModuleKey = keyof typeof ru.modules
+export type ModuleKey = keyof Messages['modules']
 
 export interface NavItem {
   key: ModuleKey
@@ -35,18 +35,24 @@ export interface NavGroup {
 
 export const STAFF_MANAGER_ROLES = ['Owner', 'Admin'] as const satisfies readonly UserRole[]
 
+/** Customers, devices, order intake. Technicians see customer contacts only inside orders. */
+export const FRONT_OFFICE_ROLES: readonly UserRole[] = ['Owner', 'Admin', 'Receptionist']
+
+/** Archiving customers and devices. */
+export const MANAGER_ROLES: readonly UserRole[] = STAFF_MANAGER_ROLES
+
 export const navGroups: NavGroup[] = [
   {
-    label: ru.nav.groups.work,
+    label: t.nav.groups.work,
     items: [
       { key: 'dashboard', path: '/', icon: LayoutGrid, available: true },
-      { key: 'orders', path: '/orders', icon: ClipboardList, available: false },
-      { key: 'customers', path: '/customers', icon: Users, available: false },
-      { key: 'devices', path: '/devices', icon: Laptop, available: false },
+      { key: 'orders', path: '/orders', icon: ClipboardList, available: true },
+      { key: 'customers', path: '/customers', icon: Users, available: true, roles: FRONT_OFFICE_ROLES },
+      { key: 'devices', path: '/devices', icon: Laptop, available: true, roles: FRONT_OFFICE_ROLES },
     ],
   },
   {
-    label: ru.nav.groups.stock,
+    label: t.nav.groups.stock,
     items: [
       { key: 'inventory', path: '/inventory', icon: Package, available: false },
       { key: 'payments', path: '/payments', icon: Wallet, available: false },
@@ -54,18 +60,18 @@ export const navGroups: NavGroup[] = [
     ],
   },
   {
-    label: ru.nav.groups.service,
+    label: t.nav.groups.service,
     items: [
       { key: 'warranty', path: '/warranty', icon: ShieldCheck, available: false },
       { key: 'notifications', path: '/notifications', icon: Bell, available: false },
     ],
   },
   {
-    label: ru.nav.groups.analytics,
+    label: t.nav.groups.analytics,
     items: [{ key: 'reports', path: '/reports', icon: BarChart3, available: false }],
   },
   {
-    label: ru.nav.groups.management,
+    label: t.nav.groups.management,
     items: [{ key: 'staff', path: '/users', icon: UserCog, available: true, roles: STAFF_MANAGER_ROLES }],
   },
 ]

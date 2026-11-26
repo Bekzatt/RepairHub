@@ -5,6 +5,9 @@ using Npgsql;
 using RepairHub.Application.Abstractions;
 using RepairHub.Application.Common;
 using RepairHub.Domain.Common;
+using RepairHub.Domain.Customers;
+using RepairHub.Domain.Devices;
+using RepairHub.Domain.RepairOrders;
 using RepairHub.Domain.Users;
 using RepairHub.Domain.Workshops;
 
@@ -26,6 +29,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, ICurren
     public DbSet<Workshop> Workshops => Set<Workshop>();
     public DbSet<User> Users => Set<User>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<Customer> Customers => Set<Customer>();
+    public DbSet<Device> Devices => Set<Device>();
+    public DbSet<RepairOrder> RepairOrders => Set<RepairOrder>();
+    public DbSet<RepairOrderEvent> RepairOrderEvents => Set<RepairOrderEvent>();
 
     /// <summary>Read by the query filters on every query execution (EF parameterizes context members).</summary>
     private Guid? CurrentWorkshopId => currentUser.WorkshopId;
@@ -56,14 +63,39 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, ICurren
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
+        EnsureHistoryIsAppendOnly();
         try
         {
             return await base.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException ex)
+        {
+            throw new ConcurrencyConflictException(ex);
         }
         catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PostgresUniqueViolation } pg)
         {
             throw new DuplicateKeyException(pg.ConstraintName, ex);
         }
+    }
+
+    /// <summary>Repair order history is append-only: refuse to persist any change to an existing event.</summary>
+    private void EnsureHistoryIsAppendOnly()
+    {
+        if (ChangeTracker.Entries<RepairOrderEvent>().Any(e => e.State is EntityState.Modified or EntityState.Deleted))
+            throw new InvalidOperationException("Repair order history events cannot be modified or deleted.");
+    }
+
+    public async Task<int> NextRepairOrderSequenceAsync(Guid workshopId, int year, CancellationToken cancellationToken)
+    {
+        EnsureTransaction();
+        // Atomic upsert: concurrent callers for the same workshop and year queue on the counter row and get
+        // consecutive values; a rollback of the surrounding transaction also rolls back the increment.
+        var values = await Database.SqlQuery<int>($"""
+            INSERT INTO repair_order_counters (workshop_id, year, last_value) VALUES ({workshopId}, {year}, 1)
+            ON CONFLICT (workshop_id, year) DO UPDATE SET last_value = repair_order_counters.last_value + 1
+            RETURNING last_value AS "Value"
+            """).ToListAsync(cancellationToken);
+        return values.Single();
     }
 
     public async Task LockWorkshopAsync(Guid workshopId, CancellationToken cancellationToken)

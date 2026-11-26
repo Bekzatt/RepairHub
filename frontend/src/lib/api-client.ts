@@ -8,12 +8,20 @@ export class ApiError extends Error {
   readonly status: number
   readonly code: string | null
   readonly fieldErrors: Record<string, string[]>
+  /** The whole problem-details body, for extra data such as "matches" of customer_phone_exists. */
+  readonly body: Record<string, unknown>
 
-  constructor(status: number, code: string | null, fieldErrors: Record<string, string[]> = {}) {
+  constructor(
+    status: number,
+    code: string | null,
+    fieldErrors: Record<string, string[]> = {},
+    body: Record<string, unknown> = {},
+  ) {
     super(`API request failed with status ${status}${code ? ` (${code})` : ''}`)
     this.status = status
     this.code = code
     this.fieldErrors = fieldErrors
+    this.body = body
   }
 }
 
@@ -81,8 +89,8 @@ function send(path: string, { method = 'GET', body, signal }: RequestOptions, au
 
 async function toApiError(response: Response): Promise<ApiError> {
   try {
-    const problem = (await response.json()) as { code?: string; errors?: Record<string, string[]> }
-    return new ApiError(response.status, problem.code ?? null, problem.errors ?? {})
+    const problem = (await response.json()) as { code?: string; errors?: Record<string, string[]> } & Record<string, unknown>
+    return new ApiError(response.status, problem.code ?? null, problem.errors ?? {}, problem)
   } catch {
     return new ApiError(response.status, null)
   }
