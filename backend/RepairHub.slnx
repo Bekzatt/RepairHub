@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/RepairHub.Api/RepairHub.Api.csproj" />
+    <Project Path="src/RepairHub.Application/RepairHub.Application.csproj" />
+    <Project Path="src/RepairHub.Domain/RepairHub.Domain.csproj" />
+    <Project Path="src/RepairHub.Infrastructure/RepairHub.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/RepairHub.Tests/RepairHub.Tests.csproj" />
+  </Folder>
+</Solution>
