@@ -4,4 +4,8 @@
     <ProjectReference Include="..\RepairHub.Domain\RepairHub.Domain.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.15" />
+  </ItemGroup>
+
 </Project>

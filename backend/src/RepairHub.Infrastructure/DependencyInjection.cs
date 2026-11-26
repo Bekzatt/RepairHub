@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using RepairHub.Application.Abstractions;
 using RepairHub.Infrastructure.Persistence;
+using RepairHub.Infrastructure.Security;
 
 namespace RepairHub.Infrastructure;
 
@@ -13,7 +15,12 @@ public static class DependencyInjection
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(connectionString);
 
-        services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
+        services.AddDbContext<AppDbContext>(options => options
+            .UseNpgsql(connectionString)
+            .UseSnakeCaseNamingConvention());
+        services.AddScoped<IAppDbContext>(sp => sp.GetRequiredService<AppDbContext>());
+
+        services.AddSingleton<IPasswordHasher, PasswordHasher>();
 
         services.AddHealthChecks()
             .AddDbContextCheck<AppDbContext>(name: "database", tags: [ReadinessTag]);

@@ -3,15 +3,18 @@ import { Outlet } from 'react-router'
 import { Menu } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet'
+import { useCurrentUser } from '@/features/auth/auth-store'
 import { useSystemHealth } from '@/features/system/use-system-health'
 import { formatLongDate } from '@/lib/format'
 import { ru } from '@/locales/ru'
 import { SidebarNav } from './sidebar-nav'
 import { SystemStatusBadge } from './system-status-badge'
+import { UserMenu } from './user-menu'
 
 export function AppShell() {
+  const user = useCurrentUser()
   const [menuOpen, setMenuOpen] = useState(false)
-  const [today] = useState(() => formatLongDate(new Date()))
+  const [today] = useState(() => formatLongDate(new Date(), user.workshop.timeZone))
   const { status } = useSystemHealth()
 
   return (
@@ -42,9 +45,12 @@ export function AppShell() {
             >
               <Menu />
             </Button>
-            <p className="text-sm text-muted-foreground">{today}</p>
-            <div className="ml-auto">
-              <SystemStatusBadge status={status} />
+            <p className="truncate text-sm text-muted-foreground">{today}</p>
+            <div className="ml-auto flex items-center gap-3">
+              <div className="hidden sm:block">
+                <SystemStatusBadge status={status} />
+              </div>
+              <UserMenu />
             </div>
           </div>
         </header>

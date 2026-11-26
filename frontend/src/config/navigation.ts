@@ -7,11 +7,13 @@ import {
   Package,
   Settings,
   ShieldCheck,
+  UserCog,
   Users,
   Wallet,
   Receipt,
   type LucideIcon,
 } from 'lucide-react'
+import type { UserRole } from '@/features/auth/types'
 import { ru } from '@/locales/ru'
 
 export type ModuleKey = keyof typeof ru.modules
@@ -22,12 +24,16 @@ export interface NavItem {
   icon: LucideIcon
   /** false = placeholder page until the module is implemented. */
   available: boolean
+  /** Visible only to these roles (the API enforces the same rule). Omitted = everyone. */
+  roles?: readonly UserRole[]
 }
 
 export interface NavGroup {
   label: string
   items: NavItem[]
 }
+
+export const STAFF_MANAGER_ROLES = ['Owner', 'Admin'] as const satisfies readonly UserRole[]
 
 export const navGroups: NavGroup[] = [
   {
@@ -58,6 +64,10 @@ export const navGroups: NavGroup[] = [
     label: ru.nav.groups.analytics,
     items: [{ key: 'reports', path: '/reports', icon: BarChart3, available: false }],
   },
+  {
+    label: ru.nav.groups.management,
+    items: [{ key: 'staff', path: '/users', icon: UserCog, available: true, roles: STAFF_MANAGER_ROLES }],
+  },
 ]
 
 export const settingsItem: NavItem = {
@@ -65,6 +75,10 @@ export const settingsItem: NavItem = {
   path: '/settings',
   icon: Settings,
   available: false,
+}
+
+export function isVisibleTo(item: NavItem, role: UserRole): boolean {
+  return !item.roles || item.roles.includes(role)
 }
 
 /** Every module that currently renders a placeholder page. */

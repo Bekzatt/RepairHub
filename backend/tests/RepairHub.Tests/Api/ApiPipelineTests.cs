@@ -24,21 +24,24 @@ public sealed class ApiPipelineTests
         await using var factory = new ApiFactory("Production");
         using var client = factory.CreateClient();
 
-        var response = await client.GetAsync("/swagger/index.html");
+        var swaggerUi = await client.GetAsync("/swagger/index.html");
+        var document = await client.GetAsync("/openapi/v1.json");
 
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.NotEqual(HttpStatusCode.OK, swaggerUi.StatusCode);
+        Assert.NotEqual(HttpStatusCode.OK, document.StatusCode);
     }
 
     [Fact]
-    public async Task UnknownRoute_ReturnsProblemDetails404()
+    public async Task UnknownRoute_ForAnonymousCaller_Returns401ProblemDetails()
     {
+        // Secure default: the fallback authorization policy also covers unmatched routes,
+        // so anonymous callers cannot probe which routes exist.
         await using var factory = new ApiFactory("Production");
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync("/api/does-not-exist");
 
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-        Assert.Equal(ProblemJson, response.Content.Headers.ContentType?.MediaType);
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
     [Fact]
@@ -54,6 +57,43 @@ public sealed class ApiPipelineTests
         Assert.Equal(ProblemJson, response.Content.Headers.ContentType?.MediaType);
         Assert.DoesNotContain(ApiFactory.SensitiveMessage, body);
         Assert.DoesNotContain("InvalidOperationException", body);
+    }
+
+    [Fact]
+    public async Task Startup_Fails_WhenJwtSigningKeyIsMissingOrTooShort()
+    {
+        foreach (var key in new[] { null, "too-short" })
+        {
+            await using var factory = new ApiFactory { SigningKey = key };
+            var exception = Record.Exception(() => factory.CreateClient());
+            Assert.NotNull(exception);
+            Assert.Contains("SigningKey", Flatten(exception));
+        }
+    }
+
+    [Fact]
+    public async Task Startup_Fails_InProduction_WhenRefreshCookieIsNotSecure()
+    {
+        await using var factory = new ApiFactory("Production")
+        {
+            Settings = { ["Auth:RefreshCookie:Secure"] = "false" },
+        };
+
+        var exception = Record.Exception(() => factory.CreateClient());
+
+        Assert.NotNull(exception);
+        Assert.Contains("RefreshCookie:Secure", Flatten(exception));
+    }
+
+    [Fact]
+    public async Task Development_AllowsNonSecureRefreshCookie_ForPlainHttpViteProxy()
+    {
+        await using var factory = new ApiFactory("Development");
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/health/live");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
     [Fact]

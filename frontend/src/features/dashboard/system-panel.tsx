@@ -2,12 +2,14 @@ import type { ReactNode } from 'react'
 import { RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useSystemHealth } from '@/features/system/use-system-health'
-import { SHOP_TIME_ZONE, formatTime } from '@/lib/format'
+import { useCurrentUser } from '@/features/auth/auth-store'
+import { formatTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { ru } from '@/locales/ru'
 
 export function SystemPanel() {
   const health = useSystemHealth()
+  const { workshop } = useCurrentUser()
 
   return (
     <section aria-labelledby="system-title" className="rounded-xl border bg-card">
@@ -34,13 +36,13 @@ export function SystemPanel() {
         <Row label={ru.dashboard.system.database}>
           <HealthValue up={health.databaseUp} downLabel={ru.status.unavailable} />
         </Row>
-        <Row label={ru.dashboard.system.timezone}>{SHOP_TIME_ZONE}</Row>
-        <Row label={ru.dashboard.system.currency}>{ru.dashboard.system.currencyValue}</Row>
+        <Row label={ru.dashboard.system.timezone}>{workshop.timeZone}</Row>
+        <Row label={ru.dashboard.system.currency}>{workshop.currency === 'KZT' ? ru.dashboard.system.currencyValue : workshop.currency}</Row>
       </dl>
 
       <p className="px-5 pt-2 pb-5 text-xs text-muted-foreground sm:px-6" aria-live="polite">
         {health.checkedAt
-          ? `${ru.dashboard.system.lastChecked} ${formatTime(health.checkedAt)}`
+          ? `${ru.dashboard.system.lastChecked} ${formatTime(health.checkedAt, workshop.timeZone)}`
           : ru.status.checking}
       </p>
     </section>

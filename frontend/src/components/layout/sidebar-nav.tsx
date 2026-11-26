@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router'
 import { cn } from '@/lib/utils'
-import { navGroups, settingsItem, type NavItem } from '@/config/navigation'
+import { isVisibleTo, navGroups, settingsItem, type NavItem } from '@/config/navigation'
+import { useCurrentUser } from '@/features/auth/auth-store'
 import { ru } from '@/locales/ru'
 import { BrandMark } from './brand-mark'
 
@@ -10,18 +11,25 @@ interface SidebarNavProps {
 }
 
 export function SidebarNav({ onNavigate }: SidebarNavProps) {
+  const user = useCurrentUser()
+  const groups = navGroups
+    .map((group) => ({ ...group, items: group.items.filter((item) => isVisibleTo(item, user.role)) }))
+    .filter((group) => group.items.length > 0)
+
   return (
     <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
       <div className="flex h-16 shrink-0 items-center gap-3 px-5">
-        <BrandMark className="size-8 text-sidebar-primary" />
-        <div className="leading-tight">
+        <BrandMark className="size-8 shrink-0 text-sidebar-primary" />
+        <div className="min-w-0 leading-tight">
           <div className="text-[15px] font-semibold text-white">{ru.app.name}</div>
-          <div className="text-xs text-sidebar-muted">{ru.app.tagline}</div>
+          <div className="truncate text-xs text-sidebar-muted" title={user.workshop.name}>
+            {user.workshop.name}
+          </div>
         </div>
       </div>
 
       <nav aria-label={ru.nav.menuTitle} className="flex-1 overflow-y-auto px-3 pb-4">
-        {navGroups.map((group) => (
+        {groups.map((group) => (
           <section key={group.label} className="mt-5 first:mt-2">
             <h2 className="px-2 pb-1.5 text-xs font-medium text-sidebar-muted">{group.label}</h2>
             <ul className="space-y-0.5">

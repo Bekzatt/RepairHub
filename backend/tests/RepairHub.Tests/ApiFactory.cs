@@ -1,14 +1,14 @@
-using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace RepairHub.Tests;
 
 /// <summary>
-/// Hosts the real API in memory. The connection string points to a closed port,
-/// so tests never need (or touch) a real database.
+/// Hosts the real API in memory without a database. The connection string points to a closed port,
+/// so these tests never need (or touch) a real database.
 /// </summary>
 public sealed class ApiFactory(string environment = "Development") : WebApplicationFactory<Program>
 {
@@ -19,23 +19,27 @@ public sealed class ApiFactory(string environment = "Development") : WebApplicat
     public const string SensitiveMessage = "internal detail that must not leak";
 
     public string? ConnectionString { get; init; } = UnreachableDatabase;
+    public string? SigningKey { get; init; } = "unit-tests-signing-key-0123456789abcdef";
+    public Dictionary<string, string> Settings { get; init; } = [];
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment(environment);
         builder.UseSetting("ConnectionStrings:Default", ConnectionString ?? string.Empty);
+        builder.UseSetting("Jwt:SigningKey", SigningKey ?? string.Empty);
+        foreach (var (key, value) in Settings) builder.UseSetting(key, value);
+        // Adds the test-only ThrowingController below to the real pipeline.
         builder.ConfigureServices(services =>
-            services.AddTransient<IStartupFilter, ThrowingEndpointStartupFilter>());
+            services.AddControllers().AddApplicationPart(typeof(ApiFactory).Assembly));
     }
+}
 
-    /// <summary>Appends a test-only endpoint after the app's own pipeline that always throws.</summary>
-    private sealed class ThrowingEndpointStartupFilter : IStartupFilter
-    {
-        public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next) => app =>
-        {
-            next(app);
-            app.Map(ThrowingPath, branch =>
-                branch.Run(_ => throw new InvalidOperationException(SensitiveMessage)));
-        };
-    }
+/// <summary>Test-only endpoint that always throws, to verify the production error pipeline.</summary>
+[ApiController]
+[AllowAnonymous]
+[Route(ApiFactory.ThrowingPath)]
+public sealed class ThrowingController : ControllerBase
+{
+    [HttpGet]
+    public IActionResult Throw() => throw new InvalidOperationException(ApiFactory.SensitiveMessage);
 }
