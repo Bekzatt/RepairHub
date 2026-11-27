@@ -91,6 +91,17 @@ public sealed class MigrateCommandTests(PostgresFixture db)
     }
 
     [Fact]
+    public async Task InvalidConnectionString_ExitsWithFailure_WithoutQuotingValues()
+    {
+        // An unquoted ';' splits the password; the tail becomes an unknown "keyword".
+        var (exitCode, _, error) = await RunAsync("Host=127.0.0.1;Password=abc;secret-tail-value");
+
+        Assert.Equal(MigrateCommand.Failure, exitCode);
+        Assert.Contains("ConnectionStrings__Default is invalid", error);
+        Assert.DoesNotContain("secret-tail-value", error);
+    }
+
+    [Fact]
     public async Task FailingMigration_ExitsWithFailure()
     {
         var connectionString = await db.CreateEmptyDatabaseAsync();

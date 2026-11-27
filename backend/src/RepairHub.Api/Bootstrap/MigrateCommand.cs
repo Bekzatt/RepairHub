@@ -29,7 +29,19 @@ internal static class MigrateCommand
 
         await using var scope = services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var target = new NpgsqlConnectionStringBuilder(db.Database.GetConnectionString());
+        NpgsqlConnectionStringBuilder target;
+        try
+        {
+            target = new NpgsqlConnectionStringBuilder(db.Database.GetConnectionString());
+        }
+        catch (ArgumentException ex)
+        {
+            // The parser's message may quote part of a value (e.g. of a password containing an unquoted ';'),
+            // so only the exception type is printed.
+            await error.WriteLineAsync($"Migration FAILED. The connection string ConnectionStrings__Default is invalid ({ex.GetType().Name}).");
+            await error.WriteLineAsync("  What to do: check its keywords and quote values that contain ';' (e.g. Password='a;b').");
+            return Failure;
+        }
 
         var stage = "Checking the database for pending migrations";
         try
