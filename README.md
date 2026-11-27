@@ -476,7 +476,7 @@ currency. Kazakh texts should be reviewed by a native speaker from the workshop 
 
 | Setting | Source | Notes |
 |---|---|---|
-| `ConnectionStrings__Default` | env / user secrets | required |
+| `ConnectionStrings__Default` | env / user secrets | required; the Docker Compose files add `Require Auth=ScramSHA256` (the client refuses cleartext, MD5 and passwordless authentication, so the password is never sent to a wrong server) |
 | `Jwt__SigningKey` | env (`JWT_SIGNING_KEY` in `.env`) / user secrets | required, ≥ 32 bytes |
 | `Database__ApplyMigrationsOnStartup` | env | `true` in the development compose; `false` in production (the `migrate` service runs instead) |
 | `ReverseProxy__TrustedProxies__N` | env | IPs/CIDRs allowed to set `X-Forwarded-For`/`-Proto` (production: the Caddy container); empty = loopback only |

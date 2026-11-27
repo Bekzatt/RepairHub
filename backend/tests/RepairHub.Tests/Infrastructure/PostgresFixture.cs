@@ -27,6 +27,14 @@ public sealed class PostgresFixture : IAsyncLifetime
     /// <summary>Creates an empty, migrated database and an API host on top of it.</summary>
     public async Task<IntegrationApiFactory> CreateDatabaseAsync()
     {
+        var factory = CreateFactory(await CreateEmptyDatabaseAsync());
+        _ = factory.Server;
+        return factory;
+    }
+
+    /// <summary>Creates an empty database WITHOUT migrations; returns its connection string.</summary>
+    public async Task<string> CreateEmptyDatabaseAsync()
+    {
         var name = "db_" + Guid.NewGuid().ToString("N");
         await using (var connection = new NpgsqlConnection(_container.GetConnectionString()))
         {
@@ -35,10 +43,7 @@ public sealed class PostgresFixture : IAsyncLifetime
             await command.ExecuteNonQueryAsync();
         }
 
-        var builder = new NpgsqlConnectionStringBuilder(_container.GetConnectionString()) { Database = name };
-        var factory = CreateFactory(builder.ConnectionString);
-        _ = factory.Server;
-        return factory;
+        return new NpgsqlConnectionStringBuilder(_container.GetConnectionString()) { Database = name }.ConnectionString;
     }
 
     private IntegrationApiFactory CreateFactory(string connectionString)

@@ -6,7 +6,10 @@
 name: repairhub-prod
 
 x-database-env: &database-env
-  ConnectionStrings__Default: "Host=postgres;Port=5432;Database=${POSTGRES_DB:-repairhub};Username=${POSTGRES_USER:-repairhub};Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in deploy/.env};GSS Encryption Mode=Disable"
+  # Require Auth=ScramSHA256: refuse any other server-requested authentication (cleartext, MD5, none), so the
+  # password is never sent and an impostor cannot complete the handshake. Matters when the database container
+  # is down: Docker DNS then forwards "postgres" to the host resolver, which may return an outside address.
+  ConnectionStrings__Default: "Host=postgres;Port=5432;Database=${POSTGRES_DB:-repairhub};Username=${POSTGRES_USER:-repairhub};Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in deploy/.env};GSS Encryption Mode=Disable;Require Auth=ScramSHA256"
 
 services:
   postgres:

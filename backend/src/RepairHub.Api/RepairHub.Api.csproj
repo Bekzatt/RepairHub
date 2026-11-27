@@ -15,6 +15,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Lets the tests call the internal server commands (MigrateCommand) directly. -->
+    <InternalsVisibleTo Include="RepairHub.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\RepairHub.Application\RepairHub.Application.csproj" />
     <ProjectReference Include="..\RepairHub.Infrastructure\RepairHub.Infrastructure.csproj" />
   </ItemGroup>

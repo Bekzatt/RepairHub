@@ -54,7 +54,8 @@ builder.Services.AddHttpLogging(options =>
 
 var app = builder.Build();
 
-if (app.Configuration.GetValue<bool>("Database:ApplyMigrationsOnStartup"))
+// The migrate command applies them itself, with error handling and a proper exit code.
+if (command != MigrateCommand.Name && app.Configuration.GetValue<bool>("Database:ApplyMigrationsOnStartup"))
 {
     await using var scope = app.Services.CreateAsyncScope();
     await scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.MigrateAsync();
