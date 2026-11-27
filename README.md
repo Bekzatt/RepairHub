@@ -22,14 +22,15 @@ backend/
   RepairHub.slnx
   Directory.Build.props          shared build settings (net10.0, nullable, warnings as errors)
   src/
-    RepairHub.Api                HTTP host: controllers, JWT setup, cookies, error mapping, create-workshop command
+    RepairHub.Api                HTTP host: controllers, JWT setup, cookies, error mapping, migrate/create-workshop commands
     RepairHub.Application        use cases (auth, users, customers, devices, repair orders), DTOs, validation, permissions
     RepairHub.Domain             entities (Workshop, User, Customer, Device, RepairOrder, history) and the order workflow
     RepairHub.Infrastructure     EF Core context, tenant query filters, order numbering, migrations, password hashing
   tests/RepairHub.Tests          unit tests + API integration tests on real PostgreSQL (Testcontainers)
-frontend/                        React application
-docker-compose.yml               PostgreSQL + API
-.env.example                     template for Docker Compose variables
+frontend/                        React application (+ Dockerfile: production build served by Caddy)
+docker-compose.yml               DEVELOPMENT: PostgreSQL + API (frontend via `npm run dev`)
+.env.example                     template for the development compose variables
+deploy/                          PRODUCTION: docker-compose.yml, Caddyfile, .env.example, backup/ (backup service)
 ```
 
 Dependency direction: `Api → Application, Infrastructure`, `Infrastructure → Application, Domain`, `Application → Domain`.
@@ -40,7 +41,10 @@ Dependency direction: `Api → Application, Infrastructure`, `Infrastructure →
 - Node.js 22+ and npm
 - Docker Desktop (or Docker Engine with Compose v2) — also needed to run the backend tests
 
-## Quick start (Docker)
+## Quick start (Docker, development)
+
+The root `docker-compose.yml` is for development only (Development environment, Swagger, API on
+`localhost:8080`, Vite dev server for the UI). For a real workshop use [Production deployment](#production-deployment).
 
 ```bash
 cp .env.example .env          # set POSTGRES_PASSWORD and a long random JWT_SIGNING_KEY
@@ -101,6 +105,259 @@ Safety rules:
 - Exit codes: `0` created, `64` usage error, `65` invalid input, `75` refused (already exists / duplicate).
 
 Without Docker: `dotnet run --project src/RepairHub.Api -- create-workshop ...` from `backend/`.
+
+## Production deployment
+
+Everything for production lives in `deploy/`. It is a separate Compose project (`repairhub-prod`) with its own
+volumes, so it never touches the development database.
+
+```
+browser ──HTTPS 443──► web (Caddy) ──┬─ /api/*, /health/* ──► api:8080 ──► postgres:5432
+           HTTP 80 → redirect        └─ everything else  ──► built SPA (index.html fallback)
+```
+
+| Service | What | Published |
+|---|---|---|
+| `web` | Caddy 2: serves the built frontend, reverse proxy to the API, obtains and renews HTTPS certificates, security headers | 80, 443 |
+| `api` | ASP.NET Core in `Production` (no Swagger, JSON logs, no SQL logging, Secure cookies enforced) | — |
+| `migrate` | one-shot `migrate` command; runs before the API starts, then exits | — |
+| `postgres` | PostgreSQL 17, data in the `repairhub-prod_postgres-data` volume | — |
+| `backup` | daily `pg_dump` backups into `BACKUP_DIR` on the host, verified, with retention | — |
+
+Only Caddy is reachable from outside; the API and the database are on an internal Docker network.
+
+### Prerequisites
+
+- A Linux server (or a Windows/macOS machine with Docker Desktop for a small shop) with Docker Engine and
+  Compose v2, 2 GB RAM, and this repository checked out (`git clone …`).
+- Ports **80 and 443** free on the server (and open in its firewall).
+- **With a domain (recommended):** a DNS `A` record (e.g. `repair.example.kz`) pointing to the server's public
+  IP, and ports 80/443 reachable from the internet (router port forwarding if the server is in the shop).
+- **Local network only:** a fixed LAN IP for the server (DHCP reservation in the router).
+
+### Configuration (`deploy/.env`)
+
+```bash
+cd deploy
+cp .env.example .env      # then edit .env; it is git-ignored
+```
+
+| Variable | Example | Meaning |
+|---|---|---|
+| `RH_SITE_ADDRESS` | `repair.example.kz` or `192.168.1.10` | Address users type in the browser, without `https://` |
+| `RH_TLS` | `admin@example.kz` or `internal` | E-mail → Let's Encrypt certificate; `internal` → Caddy's local CA |
+| `HTTP_PORT` / `HTTPS_PORT` | `80` / `443` | Keep the defaults (Let's Encrypt and redirects expect them) |
+| `RH_VERSION` | `v1.2.0` | Tag of the images built for this deployment (used for rollback) |
+| `POSTGRES_DB` / `POSTGRES_USER` | `repairhub` | Database name and user |
+| `POSTGRES_PASSWORD` | random, 32+ chars | **Secret.** `openssl rand -base64 32` |
+| `JWT_SIGNING_KEY` | random, 48+ chars | **Secret.** `openssl rand -base64 48`; changing it signs everyone out |
+| `BACKUP_SCHEDULE` | `03:00` or `03:00,13:30` | Daily backup time(s), 24-hour, in `BACKUP_TZ` |
+| `BACKUP_TZ` | `Asia/Almaty` | Time zone of `BACKUP_SCHEDULE` and of the backup log timestamps |
+| `BACKUP_KEEP_DAYS` | `7` | Backups older than this are deleted… |
+| `BACKUP_KEEP_MIN` | `3` | …except the newest N, which are always kept |
+| `BACKUP_MAX_AGE_HOURS` | `26` | `backup` turns *unhealthy* when the newest backup is older |
+| `BACKUP_DIR` | `./backups` or `/var/backups/repairhub` | Host directory for the backup files (relative = relative to `deploy/`) |
+
+Compose refuses to start if a required variable is empty. Store a copy of `deploy/.env` in a password
+manager: without `POSTGRES_PASSWORD` a backup of the volume is hard to use.
+
+Fixed internal addresses: the Docker network uses `172.30.99.0/24` and Caddy has `172.30.99.10`. The API
+trusts `X-Forwarded-For`/`X-Forwarded-Proto` **only** from that address. If the subnet clashes with
+an existing network on the server, change it in `deploy/docker-compose.yml` (three places).
+
+### HTTPS
+
+- **Domain + `RH_TLS=<e-mail>`:** Caddy obtains a Let's Encrypt certificate on first start and renews it
+  automatically. Check with `docker compose logs web | grep -i certificate`. If it fails, the DNS record or
+  port 80/443 forwarding is wrong (see Troubleshooting).
+- **HTTPS in a local network (`RH_TLS=internal`):** Caddy issues the certificate from its own local CA (no
+  internet needed). Each device must trust that CA **once**, otherwise the browser shows a certificate warning:
+
+  ```bash
+  docker compose cp web:/data/caddy/pki/authorities/local/root.crt ./repairhub-root.crt
+  ```
+
+  Install `repairhub-root.crt` as a trusted root: Windows: double-click → Install Certificate → Local
+  Machine → "Trusted Root Certification Authorities"; macOS: Keychain Access → System → trust "Always";
+  Android: Settings → Security → Install certificate → CA certificate; iOS: open the file, install the
+  profile, then Settings → General → About → Certificate Trust Settings → enable. The CA lives in the
+  `repairhub-prod_caddy-data` volume; deleting that volume creates a new CA and every device must trust it again.
+
+Certificates and the local CA are kept in the `caddy-data` volume, so restarts do not re-issue them. Caddy
+redirects HTTP to HTTPS and adds HSTS, CSP, `X-Frame-Options: DENY`, `nosniff` and `Referrer-Policy` headers
+(`deploy/Caddyfile`).
+
+### First deployment
+
+```bash
+cd deploy
+docker compose up -d --build           # builds images, migrates the database, starts everything
+docker compose ps                      # api and web "healthy", migrate "Exited (0)"
+
+# create the workshop and its Owner (prompts for the password; or pass RH_OWNER_PASSWORD with -e)
+docker compose run --rm api create-workshop \
+  --workshop-name "My Repair Shop" --owner-name "Full Name" --owner-email owner@example.kz
+```
+
+Open `https://<RH_SITE_ADDRESS>` from any device in the network and sign in.
+
+### Migrations
+
+The `migrate` service runs `dotnet RepairHub.Api.dll migrate` once per `docker compose up`, **before** the API
+starts (`depends_on: service_completed_successfully`); if it fails, the API is not started with a mismatched
+schema. API containers never migrate themselves (`Database__ApplyMigrationsOnStartup=false`), so several API
+instances cannot race on the schema. To run it by hand: `docker compose run --rm migrate`. On a brand-new
+database EF Core logs one "Failed executing DbCommand … __EFMigrationsHistory" error before creating that
+table; this is expected. Migrations are forward-only.
+
+### Backups
+
+The `backup` service takes a backup every day at `BACKUP_SCHEDULE`, and also right after it starts when the
+newest backup is older than `BACKUP_MAX_AGE_HOURS` (first deployment, server was off at backup time). It never
+restores anything by itself.
+
+- **What:** `pg_dump` custom format (compressed, restored with `pg_restore`). It reads one consistent snapshot
+  of the database while the application keeps working: reads and writes are not blocked. A migration that
+  needs an exclusive lock waits for the running dump (seconds for a workshop database), so do not schedule
+  backups at the time of an update.
+- **Where:** `BACKUP_DIR` on the host (default `deploy/backups/`, git-ignored), outside the database volume:
+  `repairhub-20261127T220000Z.dump` (time in UTC) plus `….dump.sha256`. Files are created with mode `600`,
+  owner root: they contain customer data; on Linux read them with `sudo`.
+- **Verification:** a new archive must be non-empty, have a readable table of contents, decompress completely
+  and contain table data; only then does it get its final name and checksum. A failed attempt leaves no file.
+- **Retention:** after every *successful* backup, files older than `BACKUP_KEEP_DAYS` are deleted, but the newest
+  `BACKUP_KEEP_MIN` are always kept. A failing backup never deletes anything, so the last good backup survives
+  any number of failures.
+- **Monitoring:** every run logs `backup OK …` or `ERROR: backup FAILED …` (never the password). The container
+  is *unhealthy* in `docker compose ps` when the last attempt failed or the newest backup is too old: check it
+  regularly or connect it to your monitoring.
+
+```bash
+cd deploy
+docker compose exec backup rh-backup run          # backup now (also before every update)
+docker compose exec backup rh-backup list         # backups, newest first, and the last result
+docker compose exec backup rh-backup verify repairhub-20261127T220000Z.dump
+docker compose logs backup                        # history of runs
+docker compose ps backup                          # healthy / unhealthy
+```
+
+**Copy backups off the server.** A backup on the same disk does not survive a disk failure, theft or
+ransomware. At least weekly (better daily, automated) copy `BACKUP_DIR` somewhere else, for example:
+
+```bash
+# Linux, to another machine (e.g. from root's crontab: 0 4 * * * rsync …)
+sudo rsync -a /var/backups/repairhub/ admin@nas.local:/backups/repairhub/
+# Linux, to a USB disk
+sudo rsync -a /var/backups/repairhub/ /media/usb/repairhub/
+```
+
+```powershell
+# Windows / Docker Desktop, to a network share or a USB disk
+robocopy C:\RepairHub\deploy\backups \\NAS\backups\repairhub *.dump *.sha256 /XO
+```
+
+Keep the copies in an encrypted or locked place, and keep `deploy/.env` (database password) separately. A copied
+file can be checked anywhere with `sha256sum -c repairhub-….dump.sha256`.
+
+### Restore
+
+A restore is always a manual command and needs `--confirm`; without it, it only prints what it would do. The
+file is verified first. Data is restored into a new database that is swapped in only when the restore succeeded,
+so a failed restore leaves the current database unchanged; after a successful one the previous database is
+**kept** as `repairhub_before_restore_<time>` until you drop it.
+
+To use a file from external storage, copy it (and its `.sha256`) into `BACKUP_DIR` first.
+
+**1. Look at old data without touching production** (for example, to find deleted records and enter them again):
+
+```bash
+docker compose exec backup rh-backup restore repairhub-20261127T220000Z.dump --target repairhub_restore --confirm
+docker compose exec postgres sh -c 'psql -U "$POSTGRES_USER" -d repairhub_restore'
+# when done:
+docker compose exec postgres sh -c 'psql -U "$POSTGRES_USER" -d postgres -c "DROP DATABASE repairhub_restore"'
+```
+
+**2. Replace production with a selected backup** (accidental deletion, failed update). Everything entered after
+that backup is lost from the live database (it stays in the kept copy):
+
+```bash
+docker compose exec backup rh-backup run          # safety copy of the current state
+docker compose exec backup rh-backup list         # choose the file
+docker compose stop web api
+docker compose exec backup rh-backup restore repairhub-20261127T220000Z.dump --target repairhub          # dry run
+docker compose exec backup rh-backup restore repairhub-20261127T220000Z.dump --target repairhub --confirm
+docker compose up -d                              # migrate runs first, then the application starts
+```
+
+The restore refuses to replace the database while the application is connected to it.
+
+**3. Complete database loss** (volume deleted, new server). The backups must be in `BACKUP_DIR` (copy them back
+from external storage) and `deploy/.env` must have the previous `POSTGRES_*` values:
+
+```bash
+docker compose up -d postgres                     # starts an empty database
+docker compose run --rm --no-deps backup restore repairhub-20261127T220000Z.dump --target repairhub --confirm
+docker compose up -d
+```
+
+After checking the application, drop the kept copy:
+
+```bash
+docker compose exec postgres sh -c 'psql -U "$POSTGRES_USER" -d postgres -c "\l"'
+docker compose exec postgres sh -c 'psql -U "$POSTGRES_USER" -d postgres -c "DROP DATABASE repairhub_before_restore_20261127230000"'
+```
+
+### Update procedure
+
+```bash
+cd deploy
+docker compose exec backup rh-backup run         # note the file name: it is the rollback point
+git pull                               # or: git checkout v1.3.0
+# set RH_VERSION in .env to the new version, e.g. v1.3.0 (keeps the previous images for rollback)
+docker compose up -d --build           # migrate runs first, then api and web are replaced
+docker compose ps && docker compose logs --tail 50 api
+```
+
+Expect a few seconds of downtime while the API container is replaced. Signed-in users stay signed in
+(refresh tokens are in the database).
+
+### Rollback
+
+1. Code only (the update had no new migration): set `RH_VERSION` back to the previous tag and
+   `docker compose up -d --no-build` — the previous images are still on the server.
+2. The update included a migration: stop `web api`, restore the backup taken before the update with
+   `--target repairhub --confirm` (see Restore, case 2), then do step 1.
+   Do not run old code against a newer schema.
+
+### Logs
+
+```bash
+docker compose logs -f api             # JSON: requests (method, path, status, duration), sign-ins, errors
+docker compose logs -f web             # Caddy access log (JSON) and certificate events
+docker compose logs migrate            # last migration run
+docker compose logs backup             # backup runs, retention, failures
+```
+
+Logs never contain passwords, tokens or cookies (Caddy redacts `Cookie`/`Authorization`; the API logs only
+ids). Docker's default `json-file` log driver keeps logs until the container is removed; on a long-running
+server configure rotation in `/etc/docker/daemon.json` (`"log-opts": {"max-size": "10m", "max-file": "5"}`).
+
+Health: `https://<site>/health/ready` returns 200 when the API can reach the database. Container health
+is visible in `docker compose ps`.
+
+### Troubleshooting
+
+| Symptom | Cause / fix |
+|---|---|
+| `required variable … is missing a value` | Fill in `deploy/.env` (run compose from `deploy/`) |
+| Browser: "certificate not trusted" (`RH_TLS=internal`) | Install `repairhub-root.crt` on that device (see HTTPS) |
+| Let's Encrypt fails in `logs web` | DNS `A` record does not point to the server, or ports 80/443 are not forwarded/open |
+| Site does not open from other devices | Server firewall blocks 80/443 (Windows: allow inbound TCP 80, 443), or wrong `RH_SITE_ADDRESS` |
+| `api` unhealthy / `web` not starting | `docker compose logs api migrate` — usually the database password or a failed migration |
+| `Address already in use` | Another web server (IIS, nginx) uses port 80/443 |
+| Signed out after every reload | The site is opened over plain HTTP or another address than `RH_SITE_ADDRESS`; use `https://<RH_SITE_ADDRESS>` |
+| `backup` unhealthy | `docker compose logs backup`: database down, disk full, or `BACKUP_DIR` not writable (owner must be root, e.g. created by Docker) |
+| `Pool overlaps with other one on this address space` | Change the `172.30.99.0/24` subnet in `deploy/docker-compose.yml` |
 
 ## Authentication and authorization
 
@@ -221,7 +478,8 @@ currency. Kazakh texts should be reviewed by a native speaker from the workshop 
 |---|---|---|
 | `ConnectionStrings__Default` | env / user secrets | required |
 | `Jwt__SigningKey` | env (`JWT_SIGNING_KEY` in `.env`) / user secrets | required, ≥ 32 bytes |
-| `Database__ApplyMigrationsOnStartup` | env | `true` in Docker Compose; production should migrate explicitly |
+| `Database__ApplyMigrationsOnStartup` | env | `true` in the development compose; `false` in production (the `migrate` service runs instead) |
+| `ReverseProxy__TrustedProxies__N` | env | IPs/CIDRs allowed to set `X-Forwarded-For`/`-Proto` (production: the Caddy container); empty = loopback only |
 | `Auth__RefreshCookie__Secure` | appsettings | `true` by default and **enforced outside Development**; `false` only in Development for plain-HTTP local use |
 
 Secrets are never stored in `appsettings*.json`. The API refuses to start without a connection string or
@@ -256,6 +514,8 @@ npm run lint
 npm run build
 
 docker compose config --quiet
+(cd deploy && docker compose config --quiet)   # needs deploy/.env
+sh -n deploy/backup/rh-backup.sh               # backup script syntax
 ```
 
 ## Database migrations
@@ -268,6 +528,9 @@ dotnet tool restore
 dotnet ef migrations add <Name> --project src/RepairHub.Infrastructure --startup-project src/RepairHub.Api --output-dir Persistence/Migrations
 dotnet ef database update      --project src/RepairHub.Infrastructure --startup-project src/RepairHub.Api
 ```
+
+Applying migrations without the EF tools (e.g. on a server): `dotnet RepairHub.Api.dll migrate` — in
+production this is the `migrate` service (see [Production deployment](#migrations)).
 
 Tables and columns use `snake_case`; timestamps are `timestamptz` in UTC.
 

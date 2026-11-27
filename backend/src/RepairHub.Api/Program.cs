@@ -6,12 +6,14 @@ using Microsoft.EntityFrameworkCore;
 using RepairHub.Api.Auth;
 using RepairHub.Api.Bootstrap;
 using RepairHub.Api.Errors;
+using RepairHub.Api.Hosting;
 using RepairHub.Api.OpenApi;
 using RepairHub.Application;
 using RepairHub.Infrastructure;
 using RepairHub.Infrastructure.Persistence;
 
-var isCommand = args.Length > 0 && args[0] == CreateWorkshopCommand.Name;
+var command = args.Length > 0 && args[0] is CreateWorkshopCommand.Name or MigrateCommand.Name ? args[0] : null;
+var isCommand = command is not null;
 
 // Command arguments are not configuration; keep them away from the command-line configuration provider.
 var builder = WebApplication.CreateBuilder(isCommand ? [] : args);
@@ -28,6 +30,7 @@ if (string.IsNullOrWhiteSpace(connectionString))
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(connectionString);
 builder.Services.AddRepairHubAuth(builder.Configuration, builder.Environment);
+builder.Services.AddReverseProxySupport(builder.Configuration);
 
 builder.Services
     .AddControllers(options =>
@@ -57,10 +60,19 @@ if (app.Configuration.GetValue<bool>("Database:ApplyMigrationsOnStartup"))
     await scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.MigrateAsync();
 }
 
-if (isCommand)
+if (command == MigrateCommand.Name)
+{
+    return await MigrateCommand.RunAsync(app.Services);
+}
+
+if (command == CreateWorkshopCommand.Name)
 {
     return await CreateWorkshopCommand.RunAsync(app.Services, args[1..]);
 }
+
+// First: client IP and scheme from the trusted reverse proxy, before anything reads them
+// (HSTS, rate limiting, logging).
+app.UseForwardedHeaders();
 
 // Unhandled exceptions become RFC 7807 problem responses without internal details
 // (in Development the developer exception page is shown instead).
